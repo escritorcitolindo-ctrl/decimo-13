@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashcards Interactivas - Inglés Divertido</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --secondary: #f39c12;
+            --success: #2ecc71;
+            --bg: #f0f4f8;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        #game-container {
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .card-container {
+            perspective: 1000px;
+            width: 100%;
+            height: 400px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-radius: 20px;
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 20px;
+            background: white;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .card-back {
+            transform: rotateY(180deg);
+            background-color: #fffdf0;
+            border: 4px solid var(--secondary);
+        }
+
+        .card-front {
+            border: 4px solid var(--primary);
+        }
+
+        img {
+            width: 220px;
+            height: 220px;
+            object-fit: cover;
+            border-radius: 15px;
+            margin-bottom: 15px;
+        }
+
+        .text-en { font-size: 24px; font-weight: bold; color: var(--primary); }
+        .text-es { font-size: 24px; font-weight: bold; color: #d35400; }
+
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            border: none;
+            border-radius: 50px;
+            background: var(--success);
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+            display: none;
+        }
+
+        button:hover { transform: scale(1.05); filter: brightness(1.1); }
+
+        #leaderboard {
+            display: none;
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        ul { list-style: none; padding: 0; }
+        li { padding: 10px; border-bottom: 1px solid #eee; font-size: 18px; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <h2 id="progress">Tarjeta 1 de 27</h2>
+    
+    <div class="card-container" onclick="flipCard()">
+        <div class="card" id="card">
+            <div class="card-face card-front" id="front-content">
+                </div>
+            <div class="card-face card-back" id="back-content">
+                </div>
+        </div>
+    </div>
+
+    <button id="next-btn" onclick="nextCard()">Siguiente Tarjeta ➔</button>
+
+    <div id="leaderboard">
+        <h1 style="color: #e74c3c;">GAME OVER</h1>
+        <h3>Ingresa tu nombre para el registro:</h3>
+        <input type="text" id="player-name" style="padding:10px; font-size:16px; border-radius:10px; border:1px solid #ccc;">
+        <button id="save-btn" style="display:inline-block;" onclick="savePlayer()">Guardar y Ver Lista</button>
+        <div id="players-list-container">
+            <h4>Lista de Participantes:</h4>
+            <ul id="players-list"></ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    const flashcards = [
+        { en: "Adverbial phrases", es: "Frases adverbiales", img: "https://placehold.co/400x400/4a90e2/white?text=Grammar+Rules" },
+        { en: "Answer the exercises below", es: "Responde los ejercicios de abajo", img: "https://placehold.co/400x400/4a90e2/white?text=Exam+Time" },
+        { en: "Adverbials of MANNER to say HOW something happens", es: "Adverbiales de MODO para decir CÓMO sucede algo", img: "https://placehold.co/400x400/4a90e2/white?text=Manner" },
+        { en: "The students were working happily", es: "Los estudiantes trabajaban felizmente", img: "https://placehold.co/400x400/4a90e2/white?text=Happy+Students" },
+        { en: "He was swimming as fast as possible", es: "Él nadaba tan rápido como era posible", img: "https://placehold.co/400x400/4a90e2/white?text=Fast+Swimming" },
+        { en: "Adverbials of PLACE to say WHERE something happens", es: "Adverbiales de LUGAR para decir DÓNDE sucede algo", img: "https://placehold.co/400x400/4a90e2/white?text=Place" },
+        { en: "We practice hiking there", es: "Nosotros practicamos senderismo allí", img: "https://placehold.co/400x400/4a90e2/white?text=Hiking" },
+        { en: "Adverbials of TIME to say WHEN something happens", es: "Adverbiales de TIEMPO para decir CUÁNDO sucede algo", img: "https://placehold.co/400x400/4a90e2/white?text=Time" },
+        { en: "I start working at six thirty", es: "Yo empiezo a trabajar a las seis y media", img: "https://placehold.co/400x400/4a90e2/white?text=6:30+AM" },
+        { en: "The camp is around the corner", es: "El campamento está a la vuelta de la esquina", img: "https://placehold.co/400x400/4a90e2/white?text=Camp" },
+        { en: "The tall boy runs fast", es: "El chico alto corre rápido", img: "https://placehold.co/400x400/4a90e2/white?text=Fast+Runner" },
+        { en: "I will go surfing on Sunday", es: "Yo iré a surfear el domingo", img: "https://placehold.co/400x400/4a90e2/white?text=Surfing" },
+        { en: "My family from Spain comes every year", es: "Mi familia de España viene cada año", img: "https://placehold.co/400x400/4a90e2/white?text=Spain+Family" },
+        { en: "Do the job completely", es: "Haz el trabajo completamente", img: "https://placehold.co/400x400/4a90e2/white?text=Complete" },
+        { en: "We went horse riding last Friday", es: "Fuimos a cabalgar el viernes pasado", img: "https://placehold.co/400x400/4a90e2/white?text=Horse+Riding" },
+        { en: "We like to walk along the beach in the evening", es: "Nos gusta caminar por la playa en la noche", img: "https://placehold.co/400x400/4a90e2/white?text=Beach+Walk" },
+        { en: "I practice mountain biking every weekend", es: "Yo practico ciclismo de montaña cada fin de semana", img: "https://placehold.co/400x400/4a90e2/white?text=Mountain+Biking" },
+        { en: "They looked happily at the beach", es: "Ellos miraron felizmente hacia la playa", img: "https://placehold.co/400x400/4a90e2/white?text=Looking+Beach" },
+        { en: "She has some free time", es: "Ella tiene algo de tiempo libre", img: "https://placehold.co/400x400/4a90e2/white?text=Free+Time" },
+        { en: "I like doing different things", es: "Me gusta hacer cosas diferentes", img: "https://placehold.co/400x400/4a90e2/white?text=Hobbies" },
+        { en: "Diving is a very dangerous activity", es: "El buceo es una actividad muy peligrosa", img: "https://placehold.co/400x400/4a90e2/white?text=Diving" },
+        { en: "You spend a lot of time under water", es: "Pasas mucho tiempo bajo el agua", img: "https://placehold.co/400x400/4a90e2/white?text=Underwater" },
+        { en: "You need to train a lot", es: "Necesitas entrenar mucho", img: "https://placehold.co/400x400/4a90e2/white?text=Training" },
+        { en: "To have a good body condition", es: "Para tener una buena condición física", img: "https://placehold.co/400x400/4a90e2/white?text=Fitness" },
+        { en: "It is really funny and relaxing", es: "Es realmente divertido y relajante", img: "https://placehold.co/400x400/4a90e2/white?text=Relax" },
+        { en: "I enjoy swimming", es: "Yo disfruto nadar", img: "https://placehold.co/400x400/4a90e2/white?text=Enjoy+Swimming" },
+        { en: "Looking at all sea animals", es: "Mirando a todos los animales marinos", img: "https://placehold.co/400x400/4a90e2/white?text=Sea+Animals" },
+        { en: "Once I saw a shark", es: "Una vez vi un tiburón", img: "https://placehold.co/400x400/4a90e2/white?text=Shark" },
+        { en: "The most amazing experience of all my life", es: "La experiencia más asombrosa de toda mi vida", img: "https://placehold.co/400x400/4a90e2/white?text=Amazing" }
+    ];
+
+    let currentIndex = 0;
+    let isFlipped = false;
+    const synth = window.speechSynthesis;
+
+    function loadCard() {
+        const card = flashcards[currentIndex];
+        document.getElementById('progress').innerText = `Tarjeta ${currentIndex + 1} de ${flashcards.length}`;
+        document.getElementById('front-content').innerHTML = `
+            <img src="${card.img}" alt="${card.en}">
+            <div class="text-en">${card.en}</div>
+        `;
+        document.getElementById('back-content').innerHTML = `
+            <div class="text-es">${card.es}</div>
+        `;
+        document.getElementById('next-btn').style.display = 'none';
+        speak(card.en, 'en-US');
+    }
+
+    function flipCard() {
+        const cardElement = document.getElementById('card');
+        cardElement.classList.toggle('flipped');
+        isFlipped = !isFlipped;
+
+        if (isFlipped) {
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            speak(flashcards[currentIndex].es, 'es-MX');
+            document.getElementById('next-btn').style.display = 'inline-block';
+        } else {
+            speak(flashcards[currentIndex].en, 'en-US');
+        }
+    }
+
+    function speak(text, lang) {
+        synth.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = lang;
+        utter.rate = 0.9;
+        synth.speak(utter);
+    }
+
+    function nextCard() {
+        if (currentIndex < flashcards.length - 1) {
+            currentIndex++;
+            isFlipped = false;
+            document.getElementById('card').classList.remove('flipped');
+            setTimeout(loadCard, 300);
+        } else {
+            showEndScreen();
+        }
+    }
+
+    function showEndScreen() {
+        document.querySelector('.card-container').style.display = 'none';
+        document.getElementById('next-btn').style.display = 'none';
+        document.getElementById('progress').style.display = 'none';
+        document.getElementById('leaderboard').style.display = 'block';
+        displayPlayers();
+    }
+
+    function savePlayer() {
+        const name = document.getElementById('player-name').value;
+        if (name) {
+            let players = JSON.parse(localStorage.getItem('players') || '[]');
+            players.push({name: name, date: new Date().toLocaleDateString()});
+            localStorage.setItem('players', JSON.stringify(players));
+            document.getElementById('player-name').value = '';
+            displayPlayers();
+        }
+    }
+
+    function displayPlayers() {
+        const list = document.getElementById('players-list');
+        const players = JSON.parse(localStorage.getItem('players') || '[]');
+        list.innerHTML = players.map(p => `<li><strong>${p.name}</strong> - Completado el ${p.date}</li>`).join('');
+    }
+
+    // Inicializar primera tarjeta
+    loadCard();
+</script>
+
+</body>
+</html>
